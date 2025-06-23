@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FREEFLIX - Worker Streams</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ff6b35;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .tagline {
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        
+        .search-box {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        .channels {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .channel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .channel:hover {
+            background: rgba(255,107,53,0.2);
+            transform: translateY(-5px);
+        }
+        
+        .channel img {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+        
+        .channel-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+        }
+        
+        .player-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+        }
+        
+        .player-container {
+            position: relative;
+            width: 90%;
+            height: 90%;
+            margin: 5% auto;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,107,53,0.8);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 16px;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255,107,53,1);
+        }
+        
+        #player {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .plyr {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .plyr__video-wrapper {
+            height: 100%;
+        }
+        
+        .plyr--video {
+            height: 100%;
+        }
+        
+        .plyr--full-ui input[type=range] {
+            color: #ff6b35;
+        }
+        
+        .plyr__control--overlaid {
+            background: #ff6b35;
+        }
+        
+        .plyr__control:hover {
+            background: #ff6b35;
+        }
+        
+        @media (max-width: 768px) {
+            .channels {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            .logo {
+                font-size: 2rem;
+            }
+            .player-container {
+                width: 95%;
+                height: 95%;
+                margin: 2.5% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">FREEFLIX</div>
+        <div class="tagline">Stream Your Favorite Channels for Free</div>
+    </div>
+    
+    <div class="search-box">
+        <input type="text" class="search-input" placeholder="Search channels..." id="searchInput">
+    </div>
+    
+    <div id="channelGrid" class="loading">Loading channels...</div>
+    
+    <!-- Player Modal -->
+    <div id="playerModal" class="player-modal">
+        <div class="player-container">
+            <button class="close-btn" onclick="closePlayer()">✕ Close</button>
+            <video id="player" playsinline controls>
+            </video>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script>
+        let allChannels = [];
+        let currentHls = null;
+        let currentPlayer = null;
+        
+        // Local file URLs
+        const CHANNELS_URL = 'channels.json';
+        const PLAYLIST_URL = 'https://m3u8proxyworker.farhadhossain52524.workers.dev/playlist/';
+
+        // Load channels from local JSON file
+        async function loadChannels() {
+            try {
+                const response = await fetch(CHANNELS_URL);
+                const data = await response.json();
+
+                // Handle different JSON structures
+                let channels = [];
+                if (Array.isArray(data)) {
+                    channels = data;
+                } else if (data.channels && Array.isArray(data.channels)) {
+                    channels = data.channels;
+                } else if (data.data && Array.isArray(data.data)) {
+                    channels = data.data;
+                }
+
+                // Transform channels to expected format
+                allChannels = channels.map(ch => ({
+                    id: ch.id || md5(ch.name || ''),
+                    name: ch.name || ch.title || 'Unknown Channel',
+                    logo: ch.logo || ch.image || ''
+                }));
+
+                displayChannels(allChannels);
+            } catch (error) {
+                console.error('Error loading channels:', error);
+                document.getElementById('channelGrid').innerHTML = '<div class="loading">Error loading channels.json</div>';
+            }
+        }
+
+        // Simple MD5 hash function for generating IDs
+        function md5(str) {
+            // Simple hash function (not cryptographic MD5, just for ID generation)
+            let hash = 0;
+            if (str.length === 0) return hash.toString();
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash).toString(16);
+        }
+        
+        // Display channels
+        function displayChannels(channels) {
+            const grid = document.getElementById('channelGrid');
+            if (channels.length === 0) {
+                grid.innerHTML = '<div class="loading">No channels found</div>';
+                return;
+            }
+            
+            grid.className = 'channels';
+            grid.innerHTML = channels.map(ch => `
+                <div class="channel" onclick="playChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
+                    <img src="${ch.logo || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjNEY0RjRGIi8+Cjx0ZXh0IHg9IjQwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VFY8L3RleHQ+Cjwvc3ZnPg=='}" alt="${ch.name}" onerror="this.style.display='none'">
+                    <div class="channel-name">${ch.name}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query === '') {
+                displayChannels(allChannels);
+            } else {
+                const filtered = allChannels.filter(ch => 
+                    ch.name.toLowerCase().includes(query)
+                );
+                displayChannels(filtered);
+            }
+        });
+        
+        // Play channel
+        function playChannel(channelId, channelName) {
+            const playlistUrl = PLAYLIST_URL + channelId + '.m3u8';
+            
+            // Show modal
+            document.getElementById('playerModal').style.display = 'block';
+            
+            // Initialize player
+            initializePlayer(playlistUrl, channelName);
+        }
+        
+        // Initialize HLS player
+        function initializePlayer(source, title) {
+            const video = document.getElementById('player');
+            
+            // Clean up previous player
+            if (currentHls) {
+                currentHls.destroy();
+                currentHls = null;
+            }
+            if (currentPlayer) {
+                currentPlayer.destroy();
+                currentPlayer = null;
+            }
+            
+            // Initialize HLS
+            if (Hls.isSupported()) {
+                currentHls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
+                    maxBufferSize: 60 * 1000 * 1000,
+                    maxBufferHole: 0.5,
+                    highBufferWatchdogPeriod: 2,
+                    nudgeOffset: 0.1,
+                    nudgeMaxRetry: 3,
+                    maxFragLookUpTolerance: 0.25,
+                    liveSyncDurationCount: 3,
+                    liveMaxLatencyDurationCount: 10,
+                    enableSoftwareAES: true,
+                    enableWebCrypto: true,
+                    debug: false
+                });
+
+                currentHls.loadSource(source);
+                currentHls.attachMedia(video);
+
+                currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    // Initialize Plyr
+                    currentPlayer = new Plyr(video, {
+                        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                        settings: ['quality', 'speed'],
+                        quality: {
+                            default: 'auto',
+                            options: ['auto']
+                        },
+                        autoplay: true,
+                        muted: false,
+                        title: title
+                    });
+
+                    // Auto-play
+                    video.play().catch(e => {
+                        console.log('Autoplay failed:', e);
+                    });
+                });
+
+                currentHls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS Error:', data);
+
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('Network error, trying to recover...');
+                                setTimeout(() => {
+                                    currentHls.startLoad();
+                                }, 1000);
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('Media error, trying to recover...');
+                                currentHls.recoverMediaError();
+                                break;
+                            default:
+                                console.log('Fatal error, cannot recover');
+                                break;
+                        }
+                    }
+                });
+            }
+            // Fallback for Safari (native HLS support)
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = source;
+
+                // Initialize Plyr for Safari
+                currentPlayer = new Plyr(video, {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+                    autoplay: true,
+                    muted: false,
+                    title: title
+                });
+
+                video.addEventListener('loadedmetadata', function() {
+                    video.play().catch(e => {
+                        console.log('Autoplay failed:', e);
+                    });
+                });
+            }
+        }
+        
+        // Close player
+        function closePlayer() {
+            // Hide modal
+            document.getElementById('playerModal').style.display = 'none';
+            
+            // Clean up player
+            if (currentHls) {
+                currentHls.destroy();
+                currentHls = null;
+            }
+            if (currentPlayer) {
+                currentPlayer.destroy();
+                currentPlayer = null;
+            }
+            
+            // Reset video element
+            const video = document.getElementById('player');
+            video.src = '';
+            video.load();
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('playerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePlayer();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePlayer();
+            }
+        });
+        
+        // Load channels on page load
+        loadChannels();
+    </script>
+</body>
+</html>
