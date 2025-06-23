@@ -1,100 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FREEFLIX - Worker Streams</title>
+    <title>Home - FREEFLIX | Toffee Live</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="shortcut icon" href="https://toffeelive.com/favicon.ico"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <style>
-        * {
+        body {
+            font-family: "Montserrat", sans-serif;
+            background-color: black;
+            color: #fff;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: white;
-            min-height: 100vh;
-        }
-        
+
         .header {
+            background-color: #e50914;
+            padding: 1px;
             text-align: center;
-            padding: 20px;
-            background: rgba(0,0,0,0.3);
-        }
-        
-        .logo {
-            font-size: 2.5rem;
+            font-size: 23px;
             font-weight: bold;
-            color: #ff6b35;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: 2px;
         }
-        
-        .tagline {
-            margin-top: 5px;
-            opacity: 0.8;
-        }
-        
-        .search-box {
+
+        .search-bar {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(15px);
+            border-radius: 50px;
+            padding: 0.5rem;
+            margin: 1rem auto 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             max-width: 600px;
-            margin: 20px auto;
-            padding: 0 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
-        
-        .search-input {
-            width: 100%;
-            padding: 15px;
+
+        .search-bar input {
+            background: transparent;
             border: none;
-            border-radius: 25px;
-            font-size: 16px;
+            color: white;
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+            width: 100%;
             outline: none;
         }
-        
-        .channels {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .channel {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
+
+        .search-bar button {
+            background: #FF1493;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
             cursor: pointer;
-            transition: all 0.3s;
-            backdrop-filter: blur(10px);
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-left: 0.5rem;
         }
-        
-        .channel:hover {
-            background: rgba(255,107,53,0.2);
-            transform: translateY(-5px);
+
+        .search-bar button:hover {
+            background: white;
+            color: #e50914;
         }
-        
+
+        .channel-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px auto;
+        }
+
+        .channel {
+            background-color: #202020;
+            color: white;
+            text-align: center;
+            border-radius: 20px 8px;
+            overflow: hidden;
+            padding: 10px;
+            width: 150px;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+        }
+
         .channel img {
-            width: 80px;
-            height: 80px;
-            border-radius: 10px;
-            object-fit: contain;
+            width: 100%;
+            border-radius: 15px;
             margin-bottom: 10px;
         }
-        
+
+        .channel:hover {
+            background-color: #FF1493;
+            border: 2px solid white;
+        }
+
         .channel-name {
             font-size: 14px;
             font-weight: 500;
         }
-        
-        .loading {
+
+        .spinner {
             text-align: center;
-            padding: 50px;
-            font-size: 18px;
+            margin-top: 50px;
         }
-        
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
         .player-modal {
             display: none;
             position: fixed;
@@ -105,7 +125,7 @@
             background: rgba(0,0,0,0.9);
             z-index: 1000;
         }
-        
+
         .player-container {
             position: relative;
             width: 90%;
@@ -115,12 +135,12 @@
             border-radius: 10px;
             overflow: hidden;
         }
-        
+
         .close-btn {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(255,107,53,0.8);
+            background: #FF1493;
             color: white;
             border: none;
             padding: 10px 15px;
@@ -129,48 +149,48 @@
             z-index: 1001;
             font-size: 16px;
         }
-        
+
         .close-btn:hover {
-            background: rgba(255,107,53,1);
+            background: white;
+            color: #e50914;
         }
-        
+
         #player {
             width: 100%;
             height: 100%;
         }
-        
+
         .plyr {
             width: 100%;
             height: 100%;
         }
-        
+
         .plyr__video-wrapper {
             height: 100%;
         }
-        
+
         .plyr--video {
             height: 100%;
         }
-        
+
         .plyr--full-ui input[type=range] {
-            color: #ff6b35;
+            color: #FF1493;
         }
-        
+
         .plyr__control--overlaid {
-            background: #ff6b35;
+            background: #FF1493;
         }
-        
+
         .plyr__control:hover {
-            background: #ff6b35;
+            background: #FF1493;
         }
-        
+
         @media (max-width: 768px) {
-            .channels {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-                gap: 15px;
+            .channel-list {
+                gap: 10px;
             }
-            .logo {
-                font-size: 2rem;
+            .channel {
+                width: 130px;
             }
             .player-container {
                 width: 95%;
@@ -181,16 +201,24 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">FREEFLIX</div>
-        <div class="tagline">Stream Your Favorite Channels for Free</div>
+
+<div class="container">
+    <!-- Logo Holder -->
+    <div class="mt-3 mb-4">
+        <img src="https://toffeelive.com/logo.svg" alt=""/>
     </div>
-    
-    <div class="search-box">
-        <input type="text" class="search-input" placeholder="Search channels..." id="searchInput">
+
+    <div class="search-bar">
+        <input type="text" placeholder="Enter Something To Search" id="searchInput" autocomplete="off">
+        
     </div>
-    
-    <div id="channelGrid" class="loading">Loading channels...</div>
+
+    <div class="spinner" id="channelGrid">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
     
     <!-- Player Modal -->
     <div id="playerModal" class="player-modal">
@@ -201,97 +229,96 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     <script>
         let allChannels = [];
         let currentHls = null;
         let currentPlayer = null;
-        
+
         // Local file URLs
         const CHANNELS_URL = 'channels.json';
         const PLAYLIST_URL = 'https://m3u8proxyworker.farhadhossain52524.workers.dev/playlist/';
 
+        $(document).ready(function(){
+            loadChannels();
+        });
+
+        $("#btnWorker").on("click", function(){
+            window.open("https://m3u8proxyworker.farhadhossain52524.workers.dev/", "_blank");
+        });
+
+        $("#searchInput").keyup(function() {
+            searchChannels();
+        });
+
         // Load channels from local JSON file
-        async function loadChannels() {
-            try {
-                const response = await fetch(CHANNELS_URL);
-                const data = await response.json();
+        function loadChannels() {
+            $.ajax({
+                "url": CHANNELS_URL,
+                "type": "GET",
+                "dataType": "json",
+                "success": function(data) {
+                    // Handle different JSON structures
+                    let channels = [];
+                    if (Array.isArray(data)) {
+                        channels = data;
+                    } else if (data.channels && Array.isArray(data.channels)) {
+                        channels = data.channels;
+                    } else if (data.data && Array.isArray(data.data)) {
+                        channels = data.data;
+                    }
 
-                // Handle different JSON structures
-                let channels = [];
-                if (Array.isArray(data)) {
-                    channels = data;
-                } else if (data.channels && Array.isArray(data.channels)) {
-                    channels = data.channels;
-                } else if (data.data && Array.isArray(data.data)) {
-                    channels = data.data;
+                    allChannels = channels;
+                    displayChannels(allChannels);
+                },
+                "error": function() {
+                    $("#channelGrid").html('<div class="spinner"><div class="text-light">Error loading channels.json</div></div>');
                 }
-
-                // Transform channels to expected format
-                allChannels = channels.map(ch => ({
-                    id: ch.id || md5(ch.name || ''),
-                    name: ch.name || ch.title || 'Unknown Channel',
-                    logo: ch.logo || ch.image || ''
-                }));
-
-                displayChannels(allChannels);
-            } catch (error) {
-                console.error('Error loading channels:', error);
-                document.getElementById('channelGrid').innerHTML = '<div class="loading">Error loading channels.json</div>';
-            }
+            });
         }
 
-        // Simple MD5 hash function for generating IDs
-        function md5(str) {
-            // Simple hash function (not cryptographic MD5, just for ID generation)
-            let hash = 0;
-            if (str.length === 0) return hash.toString();
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash; // Convert to 32-bit integer
-            }
-            return Math.abs(hash).toString(16);
-        }
-        
         // Display channels
         function displayChannels(channels) {
-            const grid = document.getElementById('channelGrid');
             if (channels.length === 0) {
-                grid.innerHTML = '<div class="loading">No channels found</div>';
+                $("#channelGrid").html('<div class="spinner"><div class="text-light">No channels found</div></div>');
                 return;
             }
-            
-            grid.className = 'channels';
-            grid.innerHTML = channels.map(ch => `
-                <div class="channel" onclick="playChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
-                    <img src="${ch.logo || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjNEY0RjRGIi8+Cjx0ZXh0IHg9IjQwIiB5PSI0NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VFY8L3RleHQ+Cjwvc3ZnPg=='}" alt="${ch.name}" onerror="this.style.display='none'">
-                    <div class="channel-name">${ch.name}</div>
-                </div>
-            `).join('');
+
+            let lmtl = '';
+            $.each(channels, function(k, v) {
+                lmtl += '<div class="channel" data-tvid="' + v.id + '" onclick="playChannel(this)">';
+                lmtl += '<img src="' + (v.logo || v.image || 'https://via.placeholder.com/150x150/202020/ffffff?text=TV') + '" alt="' + v.name + '"/>';
+                lmtl += '<div class="channel-name">' + (v.name || v.title) + '</div>';
+                lmtl += '</div>';
+            });
+            $("#channelGrid").html('<div class="channel-list">' + lmtl + '</div>');
         }
-        
+
         // Search functionality
-        document.getElementById('searchInput').addEventListener('input', function() {
-            const query = this.value.toLowerCase();
+        function searchChannels() {
+            let query = $("#searchInput").val().toLowerCase();
             if (query === '') {
                 displayChannels(allChannels);
             } else {
-                const filtered = allChannels.filter(ch => 
-                    ch.name.toLowerCase().includes(query)
+                let filtered = allChannels.filter(ch =>
+                    (ch.name || ch.title || '').toLowerCase().includes(query)
                 );
                 displayChannels(filtered);
             }
-        });
-        
+        }
+
         // Play channel
-        function playChannel(channelId, channelName) {
+        function playChannel(element) {
+            let channelId = $(element).attr("data-tvid");
+            let channelName = $(element).find('.channel-name').text();
             const playlistUrl = PLAYLIST_URL + channelId + '.m3u8';
-            
+
             // Show modal
-            document.getElementById('playerModal').style.display = 'block';
-            
+            $("#playerModal").show();
+
             // Initialize player
             initializePlayer(playlistUrl, channelName);
         }
@@ -399,8 +426,8 @@
         // Close player
         function closePlayer() {
             // Hide modal
-            document.getElementById('playerModal').style.display = 'none';
-            
+            $("#playerModal").hide();
+
             // Clean up player
             if (currentHls) {
                 currentHls.destroy();
@@ -410,29 +437,26 @@
                 currentPlayer.destroy();
                 currentPlayer = null;
             }
-            
+
             // Reset video element
             const video = document.getElementById('player');
             video.src = '';
             video.load();
         }
-        
+
         // Close modal when clicking outside
-        document.getElementById('playerModal').addEventListener('click', function(e) {
+        $("#playerModal").on('click', function(e) {
             if (e.target === this) {
                 closePlayer();
             }
         });
-        
+
         // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
+        $(document).on('keydown', function(e) {
             if (e.key === 'Escape') {
                 closePlayer();
             }
         });
-        
-        // Load channels on page load
-        loadChannels();
     </script>
 </body>
 </html>
